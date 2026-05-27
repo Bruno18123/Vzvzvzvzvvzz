@@ -1,0 +1,147 @@
+name: Ultra Stable Windows Cloud PC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows Remote Session
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+
+      - name: Show System Info
+        shell: powershell
+        run: |
+          Write-Host "===== SYSTEM INFO ====="
+          hostname
+          ipconfig
+          systeminfo
+
+      - name: Enable Remote Desktop
+        shell: powershell
+        run: |
+          Set-ItemProperty `
+            -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+            -Name "fDenyTSConnections" `
+            -Value 0
+
+          Enable-NetFirewallRule `
+            -DisplayGroup "Remote Desktop"
+
+      - name: Configure Password
+        shell: powershell
+        run: |
+          $pass = ConvertTo-SecureString `
+            "CloudPC2026!" `
+            -AsPlainText `
+            -Force
+
+          Set-LocalUser `
+            -Name "runneradmin" `
+            -Password $pass
+
+      - name: Download RustDesk
+        shell: powershell
+        run: |
+          curl.exe -L `
+          "https://github.com/rustdesk/rustdesk/releases/download/1.3.9/rustdesk-1.3.9-x86_64.exe" `
+          -o rustdesk.exe
+
+      - name: Install RustDesk
+        shell: powershell
+        run: |
+          Start-Process `
+            -FilePath ".\rustdesk.exe" `
+            -ArgumentList "--silent-install" `
+            -NoNewWindow
+
+          Start-Sleep -Seconds 25
+
+          Write-Host "RustDesk instalado."
+
+      - name: Start RustDesk
+        shell: powershell
+        run: |
+          $paths = @(
+            "C:\Program Files\RustDesk\rustdesk.exe",
+            "C:\Program Files (x86)\RustDesk\rustdesk.exe"
+          )
+
+          foreach ($path in $paths) {
+            if (Test-Path $path) {
+              Start-Process $path
+              Write-Host "RustDesk iniciado."
+              break
+            }
+          }
+
+          Start-Sleep -Seconds 20
+
+      - name: Download Chromium Portable
+        shell: powershell
+        run: |
+          curl.exe -L `
+          "https://download-chromium.appspot.com/dl/Win_x64?type=snapshots" `
+          -o chromium.zip
+
+          Expand-Archive `
+            -Path chromium.zip `
+            -DestinationPath C:\Chromium
+
+          Write-Host "Chromium pronto."
+
+      - name: Create Workspace
+        shell: powershell
+        run: |
+          mkdir C:\Workspace
+          mkdir C:\Downloads
+
+      - name: Show Access Info
+        shell: powershell
+        run: |
+          Write-Host ""
+          Write-Host "=============================="
+          Write-Host " WINDOWS CLOUD PC READY "
+          Write-Host "=============================="
+          Write-Host "USER: runneradmin"
+          Write-Host "PASS: CloudPC2026!"
+          Write-Host "=============================="
+
+      - name: Keep Session Alive
+        shell: powershell
+        run: |
+          Write-Host "Keeping session alive..."
+
+          for ($i=0; $i -lt 21600; $i+=60) {
+
+            $process = Get-Process `
+              -Name "rustdesk" `
+              -ErrorAction SilentlyContinue
+
+            if (-not $process) {
+
+              $paths = @(
+                "C:\Program Files\RustDesk\rustdesk.exe",
+                "C:\Program Files (x86)\RustDesk\rustdesk.exe"
+              )
+
+              foreach ($path in $paths) {
+                if (Test-Path $path) {
+                  Start-Process $path
+                  Write-Host "RustDesk reiniciado."
+                  break
+                }
+              }
+            }
+
+            Write-Host "Session active..."
+            Start-Sleep -Seconds 60
+          }
+
+      - name: Cleanup
+        if: always()
+        shell: powershell
+        run: |
+          Write-Host "Workflow finalizado."
