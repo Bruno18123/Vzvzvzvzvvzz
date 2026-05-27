@@ -91,7 +91,21 @@ jobs:
             -DestinationPath C:\Chromium
 
           Write-Host "Chromium pronto."
+- name: Show RustDesk ID
+  shell: powershell
+  run: |
+    Start-Sleep -Seconds 15
 
+    Get-ChildItem "$env:APPDATA\RustDesk"
+
+    $config = "$env:APPDATA\RustDesk\config\RustDesk.toml"
+
+    if (Test-Path $config) {
+      Write-Host "===== RUSTDESK CONFIG ====="
+      Get-Content $config
+    } else {
+      Write-Host "Config não encontrada."
+    }
       - name: Create Workspace
         shell: powershell
         run: |
